@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ============================================
-# Vectorted Library Compilation Script0
+# Vectorted Library Compilation Script
 # ============================================
 
 # Compile command
