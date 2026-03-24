@@ -21,4 +21,4 @@ Type: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api/V8Block.
 
 Expose certain wrapper layer methods to the V8Runtime environment.
 
-Type: <a href="#">V8Java</a>
+Type: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api/V8Java.md">V8Java</a>
