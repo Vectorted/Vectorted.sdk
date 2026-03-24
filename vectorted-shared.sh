@@ -5,7 +5,7 @@
 # ============================================
 
 # Compile command
-gcc -shared -fpic -o libvectorted.so -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux libvector.c -liec61850 -llib60870
+clang -shared -fpic -o libvectorted.so -I${JAVA_HOME}/include -I${JAVA_HOME}/include/linux libvector.c -liec61850 -llib60870
 
 # Check compilation result
 if [ $? -eq 0 ]; then
