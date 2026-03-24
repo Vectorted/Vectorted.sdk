@@ -5,7 +5,7 @@
 * <a href="#keeprunning">keepRunning</a>
 * <a href="#stoprunning">stopRunning</a>
 * <a href="#promise">promise</a>
-* <a href="#getclasess">getClasses</a>
+* <a href="#getclasses">getClasses</a>
 * <a href="#tojavabytes">toJavaBytes</a>
 * <a href="#tojavaintarray">toJavaIntArray</a>
 * <a href="#extend">extend</a>
