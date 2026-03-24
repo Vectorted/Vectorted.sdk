@@ -87,7 +87,7 @@ Start following the address to search memory for the injected process.
 * attachMode: number | int
 
   Target AttachMode.
-* address: bigint | long
+* address: BigInt | long
 
   Target Address.
 
@@ -104,7 +104,7 @@ Follow address changes in memory for the injected specified process.
 * attachMode: number | int
 
   Target AttachMode.
-* address: bigint | long
+* address: BigInt | long
 
   Target Address.
 * value: object | java.nio.ByteBuffer | any
@@ -118,65 +118,65 @@ offsetof(address: BigInt | Long, offsize: Bigint | Long): Long
 
 Offset the specified address by the specified vector.
 #### Parameters
-* address: bigint | long
+* address: BigInt | long
 
   Target Address.
-* offsize: bigint | long
+* offsize: BigInt | long
 
   Offset Target size.
 
 ### toChar
 ```js
-toChar(address: Bigint | Long): Char
+toChar(address: BigInt | Long): Char
 ```
 
 Convert address pointer to Char type.
 #### Parameters
-* address: number | long
+* address: BigInt | long
 
   Target Address.
 
 ### toInt
 ```js
-toInt(address: Bigint | Long): Number | Integer
+toInt(address: BigInt | Long): Number | Integer
 ```
 
 Convert address pointer to Integer type.
 #### Parameters
-* address: number | long
+* address: BigInt | long
 
   Target Address.
 
 ### toShort
 ```js
-toShort(address: Bigint | Long): Number | Short
+toShort(address: BigInt | Long): Number | Short
 ```
 
 Convert address pointer to Short type.
 #### Parameters
-* address: number | long
+* address: BigInt | long
 
   Target Address.
 
 ### toFloat
 ```js
-toFloat(address: Bigint | Long): Number | Float
+toFloat(address: BigInt | Long): Number | Float
 ```
 
 Convert address pointer to Float type.
 #### Parameters
-* address: number | long
+* address: BigInt | long
 
   Target Address.
 
 ### toBoolean
 ```js
-toBoolean(address: Bigint | Long): Boolean
+toBoolean(address: BigInt | Long): Boolean
 ```
 
 Convert address pointer to Boolean type.
 #### Parameters
-* address: number | long
+* address: BigInt | long
 
   Target Address.
 
@@ -230,18 +230,18 @@ Start MMS service.
 
   Java layer interface set, implements the Handler interface.
 #### Returns
-* threadId: bigint | long
+* threadId: BigInt | long
 
   Return threadId, it is needed to stop the service.
 
 ### stopService
 ```js
-stopService(threadId: Bigint | Long): void
+stopService(threadId: BigInt | Long): void
 ```
 
 Stop MMS service.
 #### Parameters
-* threadId: bigint | long
+* threadId: BigInt | long
 
   Find the threadId to stop the corresponding service.
 
@@ -256,18 +256,18 @@ Start Slave service.
 
   Java layer interface set, implements the Handler interface.
 #### Returns
-* threadId: bigint | long
+* threadId: BigInt | long
 
   Return threadId, it is needed to stop the service.
 
 ### stopSlaveService
 ```js
-stopSlaveService(threadId: Bigint | Long): void
+stopSlaveService(threadId: BigInt | Long): void
 ```
 
 Stop Slave service.
 #### Parameters
-* threadId: bigint | long
+* threadId: BigInt | long
 
   Find the threadId to stop the corresponding service.
 
@@ -368,9 +368,9 @@ Send Time dataset command to the MMS server.
 
 ### getNodeList
 ```js
-getNodeList(): Map<Number, Array<Any>> | HashMap<Integer, ArrayList<Object>>
+getNodeList(): Map<Number, Array<Any>> | HashMap<Integer, ArrayList<extends V8Object>>
 ```
 
 Return all points of the MMS server model.
 #### Returns
-* dateSet: Map | HashMap
+* DateSet: Map<Number, Array> | HashMap<Integer, ArrayList<V8Object>>
