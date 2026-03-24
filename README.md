@@ -47,6 +47,72 @@ Tree
 * `clear`
 * `quit | exit`
 
+### Network Model Configuration
+
+* Before starting, please configure the config.ini file. If using SdkAPI, please follow the annotated Service attribute config to subscribe to the model configuration file.
+* If the IP-Mode is IPv4, the local loopback address is used; if it is IP, the value of the IP field attribute is used. If it is neither of these two attributes or is empty, the debug source-level annotated address attribute is enabled.
+* If TYPE is MMS, the 61850 protocol is enabled; if SLAVE, the 60870-104 protocol is enabled.
+* ICD is the file path of the 61850 protocol model.
+
+```ini
+# ================================================
+# IEC 61850 MMS/Salve Server Configuration File
+# ================================================
+# Author/Copyright: Vectorted
+# Github: https://github.com/Vectorted
+# Description: Configuration for IEC 61850 MMS Server
+# File format: INI (Key-Value with sections)
+# ================================================
+
+[Vectorted.Sdk.service.v3]
+# Section indicating the software author and copyright holder.
+# This section typically contains metadata about the configuration file.
+
+[PROXY-SOCKET]
+
+IP-MODE = IPv4
+# Defines the network address resolution mode. Accepted values: IPv4 or IP.
+#  - IPv4: Forces the server to bind to the local loopback address (127.0.0.1).
+#  - IP: Instructs the server to use the specific address defined in the `IP` key.
+#  - If the value is empty, invalid, or none of the above, the configuration will be overridden by the value of the `address` attribute from the `@Service` annotation in the source code. This annotation takes the highest precedence.
+
+IP = 0.0.0.0
+# Specifies the IP address for the server to bind to. This key is conditionally effective.
+#  - It is only used when `IP-MODE` is explicitly set to "IP".
+#  - If `IP-MODE` is set to "IPv4", this value is ignored, and 127.0.0.1 is used instead.
+#  - A typical value for binding to all network interfaces is "0.0.0.0".
+
+TYPE = MMS
+# Specifies the protocol server type to be instantiated and started. Accepted values:
+#  - MMS: Initializes an IEC 61850 Manufacturing Message Specification (MMS) server.
+#  - SLAVE: Initializes an IEC 60870-5-104 (IEC 104) slave/server.
+
+[IEC61850]
+
+ICD = Template.icd
+# Path to the IEC 61850 SCL (System Configuration Language) model file.
+# This file contains the data model definition for the MMS server.
+# Supports relative paths (relative to application working directory) or absolute paths.
+# Expected file extensions: .icd, .scd, .cid (IEC 61850 configuration files)
+
+IEC61850-PORT = 102
+# TCP port number for the MMS (Manufacturing Message Specification) server.
+# This port will be overridden by the value specified in the @Module annotation's config section.
+# Standard IEC 61850 MMS port is 102, but can be customized via Java annotation configuration.
+# Ensure the configured port is available and not blocked by firewall.
+
+[IEC104]
+
+IEC104-PORT = 2404
+# TCP port number for the IEC 60870-5-104 (IEC 104) protocol server.
+# This is the actual effective configuration that will be used by the IEC 104 server.
+# Standard IEC 104 port is 2404 (IANA registered port for IEC 60870-5-104).
+# Ensure this port is available, not used by other services, and accessible through firewall rules.
+# Note: Unlike other IP/PORT configurations, this port value is NOT overridden by Java annotations
+# and will take effect as configured in this file.
+```
+
+## Let's go! Start writing a Node.js module to enable interaction.
 ### Node.js Module
 
 #### Point.mjs
@@ -268,4 +334,11 @@ await writeFile('./point.json', JSON.stringify(points, null, '\t'));
 java -jar Vectorted.Sdk.jar
   > reload Point.mjs
   > quit
+```
+
+### Terminal log output
+```shell
+✔ JVM is starting to load shared libraries.
+✔ Node.js has completed JVM virtualization.➜ v24.13.0
+✔ org.vector.Vectorted: MMS server has been started ➜ 0.0.0.0:102
 ```
