@@ -7,7 +7,7 @@
 
 A Mapping to Java class object VectortedModule,+exposing underlying IEC61850/IEC60870-104 interface functions of JNI interface.
 
-Type: <a href="">VectortedModule</a>
+Type: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api/VectortedModule.md">VectortedModule</a>
 
 #### v8Runtime
 `static read-only v8Runtime: V8Block`
