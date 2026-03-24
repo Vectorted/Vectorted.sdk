@@ -36,7 +36,7 @@ Stop the event loop according to the specified event loop ID until there are no 
   Event loop ID to be terminated.
 
 ### promise
-```js
+```ts
 promise(callback: () => Promise<T>): Promise<T>
 ```
 
@@ -86,7 +86,7 @@ Convert V8 array to Java int array.
   V8 array to be converted to Java int array.
 
 ### extend
-```js
+```ts
 extend(value: V8Object, classz: Class<T>): Class<T>
 ```
 
