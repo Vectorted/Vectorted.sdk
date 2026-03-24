@@ -6,8 +6,8 @@ Implement IEC61850/IEC60870-104 protocol endpoints and embed them into the Node.
 
 @Vectorted
 
-&ensp; Email-QQ: 3537099724@qq.com
-&ensp; Microsoft: xtyygdd123@outlook.com
+1. Email-QQ: 3537099724@qq.com
+2. Microsoft: xtyygdd123@outlook.com
 
 ### Currently Compiling
 
