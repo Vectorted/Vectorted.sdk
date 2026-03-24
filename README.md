@@ -9,21 +9,21 @@ NodeRuntime: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api.m
 
 @Vectorted
 
-1. Email-QQ: 3537099724@qq.com
-2. Microsoft: xtyygdd123@outlook.com
+* Email-QQ: `3537099724@qq.com`
+* Microsoft: `xtyygdd123@outlook.com`
 
 ### Currently Compiling
 
-1. JDK21
-2. Kali Linux(2025.4)
-3. GLIBC 2.41+
+* `JDK21`
+* `Kali Linux(2025.4)`
+* `GLIBC 2.41+`
 
 ### Environment
 
-1. JDK21+
-2. X86_64
-3. Linux | Kali | Ubuntu/Debian
-4. GLIBC 2.41+
+* `JDK21+`
+* `X86_64`
+* `Linux | Kali | Ubuntu/Debian`
+* `GLIBC 2.41+`
 
 ### Build
 
@@ -42,10 +42,10 @@ Tree
 ```
 
 ### Terminal Instruction Set
-1. `reload <script-file>`
-2. `v8-exit`
-3. `clear`
-4. `quit | exit`
+* `reload <script-file>`
+* `v8-exit`
+* `clear`
+* `quit | exit`
 
 ### Node.js Module
 
