@@ -43,3 +43,94 @@ promise(callback: () => Promise<T>): Promise<T>
 Start an asynchronous loop Promise, but unlike a regular Promise, its state is absorbed, and Node.js will not exit the event loop before it is resolved or rejected.
 #### Parameters
 * callback: Promise
+
+  Promise callback returned when the Promise is completed.
+
+### getClasses
+```js
+getClasses(className: String): Class<T>
+```
+```js
+getClasses(className: String, byte[] byteCode): Class<T>
+```
+
+Load bytecode based on class name.
+#### Parameters
+* className: String
+
+  The name of the class to be loaded.
+* byteCode: byte[]
+
+  Bytecode array.
+
+### toJavaBytes
+```js
+toJavaBytes(value: V8Array): byte[]
+```
+
+Convert V8 array to Java bytecode array.
+#### Parameters
+* value: V8Array
+
+  V8 array to be converted to Java bytecode array.
+
+### toJavaIntArray
+```js
+toJavaIntArray(value: V8Array): int[]
+```
+
+Convert V8 array to Java int array.
+#### Parameters
+* value: V8Array
+
+  V8 array to be converted to Java int array.
+
+### extend
+```js
+extend(value: V8Object, classz: Class<T>): Class<T>
+```
+
+Grant V8 objects the ability to inherit Java classes, and ultimately generate Java class objects. This method dynamically generates bytecode.
+#### Parameters
+* value: V8Object
+
+  V8 object that will inherit a Java class.
+* classz: Class
+
+  Inherited Java class.
+
+### loadJar
+```js
+loadJar(jar: String): ClassLoader
+```
+
+Load the specified jar package and return the class loader.
+#### Parameters
+* jar: String
+
+  The jar package to be loaded.
+
+### findClassByLoader
+```js
+findClassByLoader(classLoader: ClassLoader, className: String): Class<T>
+```
+
+Load the specified class according to the specified class loader.
+#### Parameters
+* classLoader: ClassLoader
+
+  The class loader used.
+* className: String
+
+  Class to be loaded.
+
+### findClass
+```js
+findClass(className: String): Class<T>
+```
+
+Use the class loader already loaded by the JVM to find and load the specified class.
+#### Parameters
+* className: String
+
+  Class to be loaded.
