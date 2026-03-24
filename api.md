@@ -14,7 +14,7 @@ Type: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api/Vectorte
 
 Used to operate V8 underlying objects and expose some wrapper layer methods.
 
-Type: <a href="#">V8Block</a>
+Type: <a href="https://github.com/Vectorted/Vectorted.sdk/blob/main/api/V8Block.md">V8Block</a>
 
 #### $java
 `static read-only $java: V8Java`
