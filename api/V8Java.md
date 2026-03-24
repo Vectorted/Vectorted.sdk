@@ -51,7 +51,7 @@ Start an asynchronous loop Promise, but unlike a regular Promise, its state is a
 getClasses(className: String): Class<T>
 ```
 ```js
-getClasses(className: String, byte[] byteCode): Class<T>
+getClasses(className: String, byteCode: int[]): Class<T>
 ```
 
 Load bytecode based on class name.
