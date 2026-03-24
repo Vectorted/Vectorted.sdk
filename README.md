@@ -28,7 +28,7 @@ To adapt to GLIBC, you need to compile it yourself. Please run vectorted-shared.
 
 ```
 Tree 
-├── PROJECT.md
+├── README.md
 ├── LICENSE.txt
 ├── /node_modules/
 ├── Point.mjs
