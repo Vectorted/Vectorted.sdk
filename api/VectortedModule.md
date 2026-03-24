@@ -8,27 +8,27 @@
 * <a href="#waitprocess">waitProcess</a>
 * <a href="#attachgetlongaddress">attachGetLongAddress</a>
 * <a href="#attachsetvaluefromaddress">attachSetValueFromAddress</a>
-* <a href="">offsetof</a>
-* <a href="">toChar</a>
-* <a href="">toInt</a>
-* <a href="">toShortf</a>
-* <a href="">toFloat</a>
-* <a href="">toBoolean</a>
-* <a href="">pointModel</a>
-* <a href="">bind</a>
-* <a href="">bindSlave</a>
-* <a href="">startService</a>
-* <a href="">stopService</a>
-* <a href="">startSlaveService</a>
-* <a href="">stopSlaveService</a>
-* <a href="">sendSlaveBlock</a>
-* <a href="">setIoList</a>
-* <a href="">setFloatValue</a>
-* <a href="">setIntValue</a>
-* <a href="">setLongValue</a>
-* <a href="">setBoolValue</a>
-* <a href="">syncClientTime</a>
-* <a href="">getNodeList</a>
+* <a href="#offsetof">offsetof</a>
+* <a href="#tochar">toChar</a>
+* <a href="#toint">toInt</a>
+* <a href="#toshort">toShort</a>
+* <a href="#tofloat">toFloat</a>
+* <a href="#toboolean">toBoolean</a>
+* <a href="#pointmodel">pointModel</a>
+* <a href="#bind">bind</a>
+* <a href="#bindslave">bindSlave</a>
+* <a href="#startservice">startService</a>
+* <a href="#stopservice">stopService</a>
+* <a href="#startslaveservice">startSlaveService</a>
+* <a href="#stopslaveservice">stopSlaveService</a>
+* <a href="#sendslaveblock">sendSlaveBlock</a>
+* <a href="#setiolist">setIoList</a>
+* <a href="#setfloatvalue">setFloatValue</a>
+* <a href="#setintvalue">setIntValue</a>
+* <a href="#setlongvalue">setLongValue</a>
+* <a href="#setboolvalue">setBoolValue</a>
+* <a href="#syncclienttime">syncClientTime</a>
+* <a href="#getnodelist">getNodeList</a>
 
 ### bindModel
 ```js
@@ -97,6 +97,7 @@ attachSetValueFromAddress(pid: Number | Long, attachMode: Number | Integer, addr
 ```
 
 Follow address changes in memory for the injected specified process.
+#### Parameters
 * pid: number | long
 
   Target Pid.
@@ -109,3 +110,267 @@ Follow address changes in memory for the injected specified process.
 * value: object | java.nio.ByteBuffer | any
 
   Set Value.
+
+### offsetof
+```js
+offsetof(address: BigInt | Long, offsize: Bigint | Long): Long
+```
+
+Offset the specified address by the specified vector.
+#### Parameters
+* address: bigint | long
+
+  Target Address.
+* offsize: bigint | long
+
+  Offset Target size.
+
+### toChar
+```js
+toChar(address: Bigint | Long): Char
+```
+
+Convert address pointer to Char type.
+#### Parameters
+* address: number | long
+
+  Target Address.
+
+### toInt
+```js
+toInt(address: Bigint | Long): Number | Integer
+```
+
+Convert address pointer to Integer type.
+#### Parameters
+* address: number | long
+
+  Target Address.
+
+### toShort
+```js
+toShort(address: Bigint | Long): Number | Short
+```
+
+Convert address pointer to Short type.
+#### Parameters
+* address: number | long
+
+  Target Address.
+
+### toFloat
+```js
+toFloat(address: Bigint | Long): Number | Float
+```
+
+Convert address pointer to Float type.
+#### Parameters
+* address: number | long
+
+  Target Address.
+
+### toBoolean
+```js
+toBoolean(address: Bigint | Long): Boolean
+```
+
+Convert address pointer to Boolean type.
+#### Parameters
+* address: number | long
+
+  Target Address.
+
+### pointModel
+```js
+pointModel(config: String): void
+```
+
+Configure and load the positioning model.
+#### Parameters
+* config: string
+
+  model config path.
+
+### bind
+```js
+bind(address: String, port: Number | Integer): void
+```
+
+Bind a specified IP port for MMS.
+#### Parameters
+* address: string
+
+  bind address.
+* port: number | long
+
+  bind port.
+
+### bindSlave
+```js
+bindSlave(address: String, port: Number | Integer): void
+```
+
+Bind a specified IP port for Slave.
+#### Parameters
+* address: string
+
+  bind address.
+* port: number | integer
+
+  bind port.
+
+### startService
+```js
+startService(handler: Handler | Any): Long
+```
+
+Start MMS service.
+#### Parameters
+* handler: any | org.vector.worker.Handler
+
+  Java layer interface set, implements the Handler interface.
+#### Returns
+* threadId: bigint | long
+
+  Return threadId, it is needed to stop the service.
+
+### stopService
+```js
+stopService(threadId: Bigint | Long): void
+```
+
+Stop MMS service.
+#### Parameters
+* threadId: bigint | long
+
+  Find the threadId to stop the corresponding service.
+
+### startSlaveService
+```js
+startSlaveService(handler: Handler | Any): Long
+```
+
+Start Slave service.
+#### Parameters
+* handler: any | org.vector.worker.Handler
+
+  Java layer interface set, implements the Handler interface.
+#### Returns
+* threadId: bigint | long
+
+  Return threadId, it is needed to stop the service.
+
+### stopSlaveService
+```js
+stopSlaveService(threadId: Bigint | Long): void
+```
+
+Stop Slave service.
+#### Parameters
+* threadId: bigint | long
+
+  Find the threadId to stop the corresponding service.
+
+### sendSlaveBlock
+```js
+sendServiceBlock(modules: Array<Number> | int[], value: Number | Float): void
+```
+
+Send ASDU dataset command to the Slave server.
+#### Parameters
+* modules: Array | int[]
+
+  Set module.
+* value: number | float
+
+  Set Value.
+
+### setIoList
+```js
+setIoList(modules: Array<Number>, value: Number | Float): void
+```
+
+Send ASDU dataset command to the Slave server.
+#### Parameters
+* modules: Array
+
+  Set module.
+* value: number | float
+
+  Set Value.
+
+### setFloatValue
+```js
+setFloatValue(path: String, value: Number | Float): void
+```
+
+Send Float dataset command to the MMS server.
+#### Parameters
+* path: String
+
+  point path.
+* value: number | float
+
+  Set Value.
+
+### setIntValue
+```js
+setIntValue(path: String, value: Number | Integer): void
+```
+
+Send Integer dataset command to the MMS server.
+#### Parameters
+* path: String
+
+  point path.
+* value: number | integer
+
+  Set Value.
+
+### setLongValue
+```js
+setLongValue(path: String, value: Bigint | Long): void
+```
+
+Send Long dataset command to the MMS server.
+#### Parameters
+* path: String
+
+  point path.
+* value: bigint | long
+
+  Set Value.
+
+### setBoolValue
+```js
+setBoolValue(path: String, value: Number | Boolean): void
+```
+
+Send Boolean dataset command to the MMS server.
+#### Parameters
+* path: String
+
+  point path.
+* value: number | boolean
+
+  Set Value.
+
+### syncClientTime
+```js
+syncClientTime(path: String): void
+```
+
+Send Time dataset command to the MMS server.
+#### Parameters
+* path: String
+
+  point path.
+
+### getNodeList
+```js
+getNodeList(): Map<Number, Array<Any>> | HashMap<Integer, ArrayList<Object>>
+```
+
+Return all points of the MMS server model.
+#### Returns
+* dateSet: Map | HashMap
