@@ -273,7 +273,7 @@ Stop Slave service.
 
 ### sendSlaveBlock
 ```js
-sendServiceBlock(modules: Array<Number> | int[], value: Number | Float): void
+sendSlaveBlock(modules: Array<Number> | int[], value: Number | Float): void
 ```
 
 Send ASDU dataset command to the Slave server.
