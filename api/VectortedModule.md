@@ -3,12 +3,11 @@
 ## Methods
 
 * <a href="#bindmodel">bindModel</a>
-* <a href="">attachProcess</a>
-* <a href="">detachProcess</a>
-* <a href="">waitProcess</a>
-* <a href="">attachProcess</a>
-* <a href="">attachGetLongAddress</a>
-* <a href="">attachSetValueFromAddress</a>
+* <a href="#attachprocess">attachProcess</a>
+* <a href="#detachprocess">detachProcess</a>
+* <a href="#waitprocess">waitProcess</a>
+* <a href="#attachgetlongaddress">attachGetLongAddress</a>
+* <a href="#attachsetvaluefromaddress">attachSetValueFromAddress</a>
 * <a href="">offsetof</a>
 * <a href="">toChar</a>
 * <a href="">toInt</a>
@@ -32,10 +31,81 @@
 * <a href="">getNodeList</a>
 
 ### bindModel
-`bindModel(model: string): string`
+```js
+bindModel(model: String): String
+```
 
 Locate the model file and generate the corresponding configuration file model.
 #### Parameters
 * model: string
 
   Preparing to parse the generated configuration model file path.
+
+### attachProcess
+```js
+attachProcess(pid: Number | Long): Boolean
+```
+
+Inject into the specified process according to Pid.
+#### Parameters
+* pid: number | long
+
+  Target Pid.
+
+### detachProcess
+```js
+detachProcess(pid: Number | Long): Boolean
+```
+
+Exit the specified target process for injection.
+#### Parameters
+* pid: number | long
+
+  Target Pid.
+
+### waitProcess
+```js
+waitProcess(pid: Number | Long): void
+```
+
+Waiting for the process to be injected to pause.
+#### Parameters
+* pid: number | long
+
+  Target Pid.
+
+### attachGetLongAddress
+```js
+attachGetLongAddress(pid: Number | Long, attachMode: Number | Integer, address: BigInt | Long): Long
+```
+
+Start following the address to search memory for the injected process.
+#### Parameters
+* pid: number | long
+
+  Target Pid.
+* attachMode: number | int
+
+  Target AttachMode.
+* address: bigint | long
+
+  Target Address.
+
+### attachSetValueFromAddress
+```js
+attachSetValueFromAddress(pid: Number | Long, attachMode: Number | Integer, address: BigInt | Long, value: Object | ByteBuffer | Any): void
+```
+
+Follow address changes in memory for the injected specified process.
+* pid: number | long
+
+  Target Pid.
+* attachMode: number | int
+
+  Target AttachMode.
+* address: bigint | long
+
+  Target Address.
+* value: object | java.nio.ByteBuffer | any
+
+  Set Value.
