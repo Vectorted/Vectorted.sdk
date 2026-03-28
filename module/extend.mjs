@@ -133,7 +133,6 @@ const ChildFile = $java.extend(java.io.File, {
      * const result = file.createDir(); // Creates directory or returns path
      */
     createDir() {
-        this.b();
         // Access Java superclass methods via $super proxy
         return $super.exists();
     }
