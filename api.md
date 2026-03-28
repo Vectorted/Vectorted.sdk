@@ -1,6 +1,6 @@
 # Vectorted API
 
-## Global
+## JVM
 
 ### vectorted
 `static read-only vectorted: VectortedModule`
