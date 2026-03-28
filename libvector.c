@@ -20,10 +20,6 @@
 #include <math.h>
 #include <sys/ptrace.h>
 
-#include <libiec61850/goose_publisher.h>
-#include <libiec61850/goose_receiver.h>
-#include <libiec61850/goose_subscriber.h>
-
 #include <libiec61850/iec61850_server.h>
 #include <lib60870/cs104_slave.h>
 #include <libiec61850/hal_thread.h>
@@ -140,6 +136,239 @@ typedef struct {
     int count;                 /**< Number of elements currently stored */
     int capacity;              /**< Current capacity of the array */
 } Points;
+
+/**
+ * @struct SendTask
+ * @brief Data transmission task for IEC 60870-5 master communication.
+ *
+ * @var SendTask::con      Master connection handle
+ * @var SendTask::asdu     ASDU container with data to transmit
+ * @var SendTask::start    Start index of information objects
+ * @var SendTask::end      End index of information objects (inclusive)
+ */
+typedef struct {
+    IMasterConnection con;
+    CS101_ASDU asdu;
+    int start;
+    int end;
+} SendTask;
+
+/**
+ * Check if a long integer is within [min, max] (inclusive).
+ * 
+ * @param value Value to check
+ * @param min   Minimum value (inclusive)
+ * @param max   Maximum value (inclusive)
+ * @return      true if in range, false otherwise
+ * 
+ * @note       Assumes min <= max. Time: O(1), Space: O(1).
+ * 
+ * @example    range(5, 1, 10) returns true
+ * @example    range(15, 1, 10) returns false
+ */
+bool range(long value, long min, long max) {
+    return (value >= min && value <= max);
+}
+
+/**
+ * @brief Thread function for synchronized general interrogation (GI) transmission.
+ * 
+ * Sends periodic ASDUs containing information objects in batches.
+ * Data type determined by object address ranges:
+ * - 1-4000: Single-point information (M_SP_NA_1)
+ * - 4097-4098: Double-point information (M_DP_NA_1)
+ * - 16385-22879: Measured values, normalized (M_ME_NA_1)
+ * - 24577-24577: Single command destination addresses (C_SC_NA_1)
+ * - 24578-24834: Double command destination addresses (C_DC_NA_1)
+ * - 25089-25099: Setpoint command destination addresses (C_SE_NC_1)
+ * - 25601-25602: Integrated totals (M_IT_NA_1)
+ * 
+ * @note Remote control and setpoint addresses (24577-25099) are typically
+ *       DOWNLINK command destinations and wouldn't be reported in uplink
+ *       transmission during general interrogation, unless they are configured
+ *       as reportable points for status feedback.
+ * 
+ * @param arg Pointer to SendTask with connection and address range
+ * @return void* Always NULL
+ */
+void* syncLockGi(void* arg) {
+    SendTask* task = (SendTask*)arg;
+
+    IMasterConnection con = task->con;
+    const int start = task->start;
+    const int end = task->end;
+    const int batchSize = 20;
+
+    for (int i = start; i < end; i += batchSize) {
+        /* Create ASDU with periodic cause of transmission (COT_PERIODIC) */
+        CS101_ASDU asdu =
+            CS101_ASDU_create(
+                IMasterConnection_getApplicationLayerParameters(con),
+                false,                      /* Not sequence of information objects */
+                CS101_COT_PERIODIC,         /* Periodic transmission */
+                0,                          /* Originator address (0 for not used) */
+                1,                          /* Common address (ASDU address) */
+                false,                      /* No test flag */
+                false);                     /* No negative confirmation */
+
+        /* Process each point in the current batch */
+        for (int j = 0; j < batchSize && (i + j) < end; j++) {
+            int point = i + j;
+            InformationObject io = NULL;
+
+            /* Create information object based on point address range */
+            if (range(point, 1, 4000)) {
+                /* Single-point information (binary status) */
+                io = (InformationObject)SinglePointInformation_create(
+                    NULL, point, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 4097, 4098)) {
+                /* Double-point information (dual-state equipment status) */
+                io = (InformationObject)DoublePointInformation_create(
+                    NULL, point, 0, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 16385, 22879)) {
+                /* Measured value, short format (normalized analog value) */
+                io = (InformationObject)MeasuredValueShort_create(
+                    NULL, point, 0, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 24577, 24577)) {
+                /* Single command destination (remote control point) */
+                io = (InformationObject)SingleCommand_create(
+                    NULL, point, 0, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 24578, 24834)) {
+                /* Double command destination (dual-state remote control point) */
+                io = (InformationObject)DoubleCommand_create(
+                    NULL, point, 0, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 25089, 25099)) {
+                /* Setpoint command destination (normalized analog setpoint) */
+                io = (InformationObject)SetpointCommandNormalized_create(
+                    NULL, point, 0.0f, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(point, 25601, 25602)) {
+                /* Integrated totals (counter/energy totals) */
+                io = (InformationObject)IntegratedTotals_create(
+                    NULL, point, 
+                    BinaryCounterReading_create(NULL, 0, 0, false, false, false));
+            }
+
+            /* Add to ASDU if object created successfully */
+            if (io != NULL) {
+                CS101_ASDU_addInformationObject(asdu, io);
+                InformationObject_destroy(io);
+            }
+        }
+        
+        /* Send ASDU to master connection */
+        IMasterConnection_sendASDU(con, asdu);
+        CS101_ASDU_destroy(asdu);
+
+        /* Delay between batches to avoid overwhelming the communication channel */
+        Thread_sleep(5);
+    }
+    free(task);
+
+    return NULL;
+}
+
+/**
+ * @brief Handles master connection state changes.
+ *
+ * @param parameter User context pointer
+ * @param con Master connection handle
+ * @param event Connection event type
+ */
+static void connectionEventHandler(void* parameter, IMasterConnection con, CS104_PeerConnectionEvent event) {
+    switch (event) {
+        case CS104_CON_EVENT_CONNECTION_OPENED:
+            /*printf("net: %p\n", con);*/
+            break;
+
+        case CS104_CON_EVENT_CONNECTION_CLOSED:
+            /*printf("close: %p\n", con);*/
+            break;
+
+        default:break;
+    }
+}
+
+/**
+ * @brief Handles general interrogation requests.
+ * 
+ * Starts multiple threads to batch transmit all configured data to the master station
+ * in response to a general interrogation command. Each thread handles a specific
+ * Information Object Address (IOA) range corresponding to a data type.
+ * 
+ * Transmission ranges and corresponding IEC 60870-5-104 data types:
+ * 1. 1-4000: Single-point information (M_SP_NA_1) - Binary status points
+ * 2. 4097-4098: Double-point information (M_DP_NA_1) - Dual-state equipment status
+ * 3. 16385-22879: Measured values, normalized (M_ME_NA_1) - Analog measurements
+ * 4. 24577-24577: Single command (C_SC_NA_1) destinations - Single-point remote control targets
+ * 5. 24578-24834: Double command (C_DC_NA_1) destinations - Dual-point remote control targets
+ * 6. 25089-25099: Setpoint command (C_SE_NC_1) destinations - Analog setpoint targets
+ * 7. 25601-25602: Integrated totals (M_IT_NA_1) - Energy/counter totals
+ * 
+ * @note Remote control and setpoint addresses (ranges 4-6) are typically the destinations
+ *       for DOWNLINK commands from master. They are included here for completeness
+ *       but normally wouldn't be reported in uplink transmission unless specifically
+ *       configured as reportable points.
+ * 
+ * @param parameter User context pointer
+ * @param con Master connection handle
+ * @param asdu Interrogation ASDU containing the request
+ * @param qoi Qualifier of interrogation (should be 20 for general interrogation)
+ * @return bool Always returns true (command accepted)
+ */
+static bool interrogationHandler(void* parameter, IMasterConnection con, CS101_ASDU asdu, uint8_t qoi) {
+    /* Send activation confirmation to master station */
+    IMasterConnection_sendACT_CON(con, asdu, false);
+
+    /* Transmission tasks for all configured IOA ranges */
+    struct {
+        pthread_t thread;
+        SendTask* task;
+        int start;
+        int end;
+    } threads[] = {
+        {0, NULL, 16385, 22880},  /* Measured values, short format (M_ME_NA_1) */
+        {0, NULL, 1, 4001},       /* Single-point information (M_SP_NA_1) */
+        {0, NULL, 25601, 25603},  /* Integrated totals (M_IT_NA_1) */
+        {0, NULL, 4097, 4099},    /* Double-point information (M_DP_NA_1) */
+        {0, NULL, 24577, 24578},  /* Single command destination addresses (C_SC_NA_1) */
+        {0, NULL, 24578, 24835},  /* Double command destination addresses (C_DC_NA_1) */
+        {0, NULL, 25089, 25100}   /* Setpoint command destination addresses (C_SE_NC_1) */
+    };
+
+    /* Create and execute transmission threads for each IOA range */
+    for (int i = 0; i < sizeof(threads)/sizeof(threads[0]); i++) {
+        /* Allocate memory for transmission task structure */
+        threads[i].task = (SendTask*)malloc(sizeof(SendTask));
+        if (threads[i].task == NULL) {
+            /* Memory allocation failed - clean up previously allocated tasks */
+            for (int j = 0; j < i; j++) {
+                free(threads[j].task);
+            }
+            return true;
+        }
+        
+        /* Configure task parameters with connection and IOA range */
+        threads[i].task->con = con;
+        threads[i].task->asdu = asdu;
+        threads[i].task->start = threads[i].start;
+        threads[i].task->end = threads[i].end;
+        
+        /* Create and manage transmission thread (detached, but joined to ensure serial execution) */
+        pthread_create(&threads[i].thread, NULL, syncLockGi, threads[i].task);
+        pthread_detach(threads[i].thread);
+        pthread_join(threads[i].thread, NULL);
+    }
+
+    /* Send interrogation termination to complete the general interrogation sequence */
+    IMasterConnection_sendACT_TERM(con, asdu);
+    return true;
+}
 
 /**
  * @brief Creates a new dynamic array with initial capacity
@@ -1017,10 +1246,15 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_bindSlave(JNIEnv* 
 
     CS104_Slave_setLocalAddress(slave_service, address);
     CS104_Slave_setLocalPort(slave_service, port);
+    CS104_Slave_setMaxOpenConnections(slave_service, 1);
+
+    CS104_Slave_setServerMode(slave_service, CS104_MODE_SINGLE_REDUNDANCY_GROUP);
+
+    CS104_Slave_setConnectionEventHandler(slave_service, connectionEventHandler, NULL);
+    CS104_Slave_setInterrogationHandler(slave_service, interrogationHandler, NULL);
 
     (*env)->ReleaseStringUTFChars(env, ip, address);
 }
-
 /**
  * Starts CS104 slave service and creates worker thread.
  * Sets server mode, starts slave service, and creates detached thread for continuous operation.
@@ -1138,103 +1372,116 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_stopSlaveService(J
 }
 
 /**
- * Check if a long integer is within [min, max] (inclusive).
+ * @brief Sends batch telecontrol data to multiple modules via IEC 60870-5-104 slave service.
  * 
- * @param value Value to check
- * @param min   Minimum value (inclusive)
- * @param max   Maximum value (inclusive)
- * @return      true if in range, false otherwise
+ * This JNI function creates and enqueues ASDUs containing various information object types
+ * based on the module address ranges. Data is batched in groups of up to 20 points per ASDU.
  * 
- * @note       Assumes min <= max. Time: O(1), Space: O(1).
- * 
- * @example    range(5, 1, 10) returns true
- * @example    range(15, 1, 10) returns false
+ * @param env JNI environment pointer
+ * @param object Java object reference
+ * @param modules Java int array containing module addresses (Information Object Addresses)
+ * @param value Common value for all points in the batch transmission
  */
-bool range(long value, long min, long max) {
-    return (value >= min && value <= max);
-}
-
-/**
- * Sends a scaled measured value ASDU to connected CS104 clients.
- * Creates and queues an IEC 60870-5-101/104 ASDU containing the specified value
- * for transmission to monitoring clients. Only processes valid module addresses.
- * 
- * @param env     JNI execution environment for accessing Java VM functions
- * @param object  Java object instance that called this native method (unused)
- * @param module  IEC 60870 module address (object reference) in range [16385, 22879].
- *                Represents the specific measurement point/data object being updated.
- * @param value   Scaled integer value to send (typically 16-bit signed integer).
- *                Will be encoded as MeasuredValueScaled (type ID 13) in the ASDU.
- * 
- * @note Module address range corresponds to standard IEC 61850/IEC 60870 address space
- * @note Uses CS101_COT_PERIODIC cause of transmission for regular updates
- * @note Quality is set to IEC60870_QUALITY_GOOD (all flags clear)
- * @note Function is no-op if module address is outside valid range
- * @note Caller must ensure slave_service is properly initialized via bindSlave()
- * 
- * @warning ASDU creation/destruction must be balanced - potential memory leak if
- *          CS101_ASDU_destroy() fails to execute due to early return
- * 
- * @see CS101_ASDU_create
- * @see MeasuredValueScaled_create  
- * @see CS104_Slave_enqueueASDU
- * @see CS101_ASDU_destroy
- * @see InformationObject_destroy
- */
-JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_sendSlaveBlock(JNIEnv* env, jobject object, jintArray modules, jfloat value) {
+JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_sendSlaveBlock(
+    JNIEnv* env, jobject object, jintArray modules, jfloat value) {
+    
+    /* Get native array from Java int array */
     jint* box = (*env)->GetIntArrayElements(env, modules, NULL);
-
-    if(box == NULL) {
-        return;
+    if (box == NULL) {
+        return; /* Failed to get array elements */
     }
 
-    int max = 20;
-    int size = (*env)->GetArrayLength(env, modules);
-    int block = (int)ceil((double)size / max);
+    /* Calculate batch configuration */
+    int maxBatchSize = 20; /* Maximum points per ASDU */
+    int totalPoints = (*env)->GetArrayLength(env, modules);
+    int numBatches = (int)ceil((double)totalPoints / maxBatchSize);
 
-    CS101_ASDU* asdus = (CS101_ASDU*)malloc(sizeof(CS101_ASDU*) * block);
-
-    if(asdus == NULL) {
-        return;
+    /* Allocate memory for ASDU pointers */
+    CS101_ASDU* asdus = malloc(sizeof(CS101_ASDU) * numBatches);
+    if (asdus == NULL) {
+        (*env)->ReleaseIntArrayElements(env, modules, box, 0);
+        return; /* Memory allocation failed */
     }
 
-    int start = 0;
-    int end = start + max;
+    int startIdx = 0;
+    int endIdx = startIdx + maxBatchSize;
 
-    for(int i = 0; i < block; i++) {
-        asdus[i] = CS101_ASDU_create(params, false, CS101_COT_PERIODIC, 0, 1, false, false);
-        for(int c = start; c < end && c < size; c++) {
+    /* Process each batch */
+    for (int batchIdx = 0; batchIdx < numBatches; batchIdx++) {
+        /* Create ASDU for this batch with periodic cause of transmission */
+        asdus[batchIdx] = CS101_ASDU_create(
+            params,                     /* Application layer parameters */
+            false,                      /* Not sequence of information objects */
+            CS101_COT_PERIODIC,         /* Periodic transmission */
+            0,                          /* Originator address (0 for not used) */
+            1,                          /* Common address (ASDU address) */
+            false,                      /* No test flag */
+            false                       /* No negative confirmation */
+        );
 
-            int module = box[c];
-            if(range(module, 25601, 25602)) {
-                InformationObject io = (InformationObject) IntegratedTotals_create(NULL, module, BinaryCounterReading_create(NULL, (int32_t)value, 0, false, false, false));
-                CS101_ASDU_addInformationObject(asdus[i], io);
+        /* Process each module in current batch */
+        for (int pointIdx = startIdx; pointIdx < endIdx && pointIdx < totalPoints; pointIdx++) {
+            int moduleAddr = box[pointIdx];
+            InformationObject io = NULL;
 
-                InformationObject_destroy(io);
+            /* Create appropriate information object based on module address */
+            if (range(moduleAddr, 1, 4000)) {
+                /* Single-point information (binary status) - M_SP_NA_1 */
+                io = (InformationObject)SinglePointInformation_create(
+                    NULL, moduleAddr, (bool)value, IEC60870_QUALITY_GOOD);
             }
-            if(range(module, 16385, 22879)) {
-                InformationObject io = (InformationObject) MeasuredValueShort_create(NULL, module, (float)value, IEC60870_QUALITY_GOOD);
-                CS101_ASDU_addInformationObject(asdus[i], io);
-
-                InformationObject_destroy(io);
+            else if (range(moduleAddr, 4097, 4098)) {
+                /* Double-point information (dual-state equipment status) - M_DP_NA_1 */
+                io = (InformationObject)DoublePointInformation_create(
+                    NULL, moduleAddr, (value >= 0.5) ? IEC60870_DOUBLE_POINT_ON : IEC60870_DOUBLE_POINT_OFF, IEC60870_QUALITY_GOOD);
             }
-            if(range(module, 1, 4000)) {
-                InformationObject bio = (InformationObject) SinglePointInformation_create(NULL, module, (bool)value, IEC60870_QUALITY_GOOD);
-                CS101_ASDU_addInformationObject(asdus[i], bio);
+            else if (range(moduleAddr, 16385, 22879)) {
+                /* Measured value, short format (normalized analog value) - M_ME_NA_1 */
+                io = (InformationObject)MeasuredValueShort_create(
+                    NULL, moduleAddr, value, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(moduleAddr, 24577, 24577)) {
+                /* WARNING: Single command is DOWNLINK type, not typically used for uplink */
+                io = (InformationObject)SingleCommand_create(
+                    NULL, moduleAddr, 0, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(moduleAddr, 24578, 24834)) {
+                /* WARNING: Double command is DOWNLINK type, not typically used for uplink */
+                io = (InformationObject)DoubleCommand_create(
+                    NULL, moduleAddr, 0, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(moduleAddr, 25089, 25099)) {
+                /* WARNING: Setpoint command is DOWNLINK type, not typically used for uplink */
+                io = (InformationObject)SetpointCommandNormalized_create(
+                    NULL, moduleAddr, value, false, IEC60870_QUALITY_GOOD);
+            }
+            else if (range(moduleAddr, 25601, 25602)) {
+                /* Integrated totals (counter/energy totals) - M_IT_NA_1 */
+                io = (InformationObject)IntegratedTotals_create(
+                    NULL, moduleAddr, 
+                    BinaryCounterReading_create(NULL, (int32_t)value, 0, false, false, false));
+            }
 
-                InformationObject_destroy(bio);
+            /* Add to ASDU and clean up */
+            if (io != NULL) {
+                CS101_ASDU_addInformationObject(asdus[batchIdx], io);
+                InformationObject_destroy(io);
             }
         }
-        start = end;
-        end = start + max;
 
-        CS104_Slave_enqueueASDU(slave_service, asdus[i]);
-        CS101_ASDU_destroy(asdus[i]);
+        /* Update indices for next batch */
+        startIdx = endIdx;
+        endIdx = startIdx + maxBatchSize;
 
-        struct timespec time = {0, 500000};
-        nanosleep(&time, NULL);
+        /* Enqueue ASDU to slave service for transmission */
+        CS104_Slave_enqueueASDU(slave_service, asdus[batchIdx]);
+        CS101_ASDU_destroy(asdus[batchIdx]);
+
+        /* Small delay to prevent overwhelming the communication channel */
+        Thread_sleep(5);
     }
 
+    /* Clean up resources */
     (*env)->ReleaseIntArrayElements(env, modules, box, 0);
     free(asdus);
 }
