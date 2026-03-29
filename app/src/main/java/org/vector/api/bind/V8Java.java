@@ -24,7 +24,6 @@ import com.caoccao.javet.exceptions.JavetException;
 import com.caoccao.javet.interop.V8Runtime;
 import com.caoccao.javet.values.V8Value;
 import com.caoccao.javet.values.reference.IV8ValuePromise.IListener;
-import com.caoccao.javet.values.reference.V8ValueArray;
 import com.caoccao.javet.values.reference.V8ValueObject;
 import com.caoccao.javet.values.reference.V8ValuePromise;
 
@@ -140,36 +139,6 @@ public final class V8Java<T> {
     @V8Function(name = "getClasses")
     public Class<?> getClasses(String className, byte[] byteCode) {
         return vectortedClassLoader.getClasses(className, byteCode);
-    }
-
-    /**
-     * Converts a V8 JavaScript array of numeric values into a Java byte array.
-     * <p>
-     * This method facilitates interoperability by translating V8 array elements
-     * (provided as strings or numbers) into a native Java byte array.
-     *
-     * @param values a V8 array containing elements that can be parsed as bytes
-     * @return a Java byte array constructed from the V8 array elements
-     * @throws JavetException if an error occurs during V8 value conversion
-     */
-    @V8Function(name = "toJavaBytes")
-    public byte[] toJavaBytes(V8ValueArray values) throws JavetException {
-        byte[] bytes = new byte[values.getLength()];
-        
-        for(int i = 0; i < values.getLength(); i++) {
-            bytes[i] = Byte.parseByte(new String(v8Runtime.toObject(values.get(i)).toString()));
-        }
-        return bytes;
-    }
-
-    @V8Function(name = "toJavaIntArray")
-    public int[] toJavaIntArray(V8ValueArray values) throws JavetException {
-        int[] intBox = new int[values.getLength()];
-        
-        for(int i = 0; i < values.getLength(); i++) {
-            intBox[i] = Integer.parseInt(new String(v8Runtime.toObject(values.get(i)).toString()));
-        }
-        return intBox;
     }
 
     /**
