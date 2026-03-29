@@ -66,7 +66,8 @@ public class VectortedModule {
 
         try {
             Io.closeInput();
-            File outFile = new File(CACHEDIR.getPath(), model.replaceAll("icd", "cfg"));
+            File outFile = new File(CACHEDIR.getPath(), new File(model).getName().replaceAll("icd", "cfg"));
+            System.out.println(outFile.getPath());
             com.libiec61850.tools.DynamicModelGenerator.main(new String[]{model, outFile.getAbsolutePath()});
             Io.openInput();
 
