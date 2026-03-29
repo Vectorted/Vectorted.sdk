@@ -6,8 +6,6 @@
 * <a href="#stoprunning">stopRunning</a>
 * <a href="#promise">promise</a>
 * <a href="#getclasses">getClasses</a>
-* <a href="#tojavabytes">toJavaBytes</a>
-* <a href="#tojavaintarray">toJavaIntArray</a>
 * <a href="#extend">extend</a>
 * <a href="#loadjar">loadJar</a>
 * <a href="#findclassbyloader">findClassByLoader</a>
@@ -62,28 +60,6 @@ Load bytecode based on class name.
 * byteCode: byte[]
 
   Bytecode array.
-
-### toJavaBytes
-```js
-toJavaBytes(value: V8Array): byte[]
-```
-
-Convert V8 array to Java bytecode array.
-#### Parameters
-* value: V8Array
-
-  V8 array to be converted to Java bytecode array.
-
-### toJavaIntArray
-```js
-toJavaIntArray(value: V8Array): int[]
-```
-
-Convert V8 array to Java int array.
-#### Parameters
-* value: V8Array
-
-  V8 array to be converted to Java int array.
 
 ### extend
 ```ts
