@@ -1286,8 +1286,6 @@ JNIEXPORT jlong JNICALL Java_org_vector_client_VectortedModule_startSlaveService
         (*env)->DeleteLocalRef(env, handler_class);
         return 0;
     }
-
-    CS104_Slave_setServerMode(slave_service, CS104_MODE_MULTIPLE_REDUNDANCY_GROUPS);
     params = CS104_Slave_getAppLayerParameters(slave_service);
 
     CS104_Slave_start(slave_service);
