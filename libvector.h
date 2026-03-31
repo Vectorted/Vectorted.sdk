@@ -578,7 +578,7 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_setLongValue
 
 /**
  * Class:     org_vector_client_VectortedModule
- * Method:    syncClientTime
+ * Method:    clockLock
  * Signature: (Ljava/lang/String;)V
  * 
  * Synchronizes client system time to IEC 61850 timestamp attribute.
@@ -597,7 +597,7 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_setLongValue
  * @see IedServer_updateUTCTimeAttributeValue
  * @see Hal_getTimeInMs
  */
-JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_syncClientTime
+JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_clockLock
   (JNIEnv *, jobject, jstring);
 
 /**
