@@ -196,7 +196,7 @@ const HANDLER = [
     },
     {
         module: '.t',
-        handler: (value) => vectorted.syncClientTime(value),
+        handler: (value) => vectorted.clockLock(value),
         type: [java.lang.Long, Date]
     }
 ];
