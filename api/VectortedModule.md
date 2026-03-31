@@ -27,7 +27,7 @@
 * <a href="#setintvalue">setIntValue</a>
 * <a href="#setlongvalue">setLongValue</a>
 * <a href="#setboolvalue">setBoolValue</a>
-* <a href="#syncclienttime">syncClientTime</a>
+* <a href="#clockLock">clockLock</a>
 * <a href="#getnodelist">getNodeList</a>
 
 ### bindModel
@@ -355,9 +355,9 @@ Send Boolean dataset command to the MMS server.
 
   Set Value.
 
-### syncClientTime
+### clockLock
 ```js
-syncClientTime(path: String): void
+clockLock(path: String): void
 ```
 
 Send Time dataset command to the MMS server.
