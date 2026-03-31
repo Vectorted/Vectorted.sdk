@@ -30,7 +30,7 @@ const VALUES = {
         return {
             FLOAT: new Date().getMilliseconds(),
             INT: Math.floor(Math.random() * 3 + 1),
-            BOOLEAN: /*Math.floor(Math.random() * 2) ? true : false*/true
+            BOOLEAN: true
         }
     }
 }
@@ -180,16 +180,6 @@ for(const [level, array] of points) {
         });
     }
 }
-
-/*const ioM = Array.from({length: 22879 - 16385}, (item, count) => 16385 + count);
-const ioB = Array.from({length: 4001}, (item, count) => 1 + count);
-const ioA = Array.from({length: 2}, (item, count) => 25601 + count);
-
-setTimeout(() => {
-    vectorted.setIoList(ioM, 19.22);
-    vectorted.setIoList(ioB, true);
-    vectorted.setIoList(ioA, 39);
-}, 1000)*/
 
 /**
  * Data export to JSON file.
