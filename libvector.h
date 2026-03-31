@@ -11,7 +11,7 @@
 /* Header for class org_vector_client_VectortedModule */
 
 #ifndef _Included_org_vector_client_VectortedModule
-#define _Included_org_vector_client_VectortedModule
+#define _Included_org_vector_client_VectortedModule 
 #ifdef __cplusplus
 extern "C" {
 #endif
