@@ -1062,7 +1062,7 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_setLongValue(JNIEn
  * @param object Java object instance  
  * @param address Data attribute object reference path
  */
-JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_syncClientTime(JNIEnv* env, jobject object, jstring address) {
+JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_clockLock(JNIEnv* env, jobject object, jstring address) {
     const char* node = (*env)->GetStringUTFChars(env, address, NULL);
 
     DataAttribute* attr = (DataAttribute*)IedModel_getModelNodeByObjectReference(model, node);
