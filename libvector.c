@@ -230,7 +230,7 @@ void* syncLockGi(void* arg) {
             else if (range(point, 16385, 22879)) {
                 /* Measured value, short format (normalized analog value) */
                 io = (InformationObject)MeasuredValueShort_create(
-                    NULL, point, 0, IEC60870_QUALITY_GOOD);
+                    NULL, point, 0.0f, IEC60870_QUALITY_GOOD);
             }
             else if (range(point, 24577, 24577)) {
                 /* Single command destination (remote control point) */
@@ -332,13 +332,13 @@ static bool interrogationHandler(void* parameter, IMasterConnection con, CS101_A
         int start;
         int end;
     } threads[] = {
-        {0, NULL, 16385, 22880},  /* Measured values, short format (M_ME_NA_1) */
         {0, NULL, 1, 4001},       /* Single-point information (M_SP_NA_1) */
-        {0, NULL, 25601, 25603},  /* Integrated totals (M_IT_NA_1) */
         {0, NULL, 4097, 4099},    /* Double-point information (M_DP_NA_1) */
+        {0, NULL, 16385, 22880},  /* Measured values, short format (M_ME_NA_1) */
         {0, NULL, 24577, 24578},  /* Single command destination addresses (C_SC_NA_1) */
         {0, NULL, 24578, 24835},  /* Double command destination addresses (C_DC_NA_1) */
-        {0, NULL, 25089, 25100}   /* Setpoint command destination addresses (C_SE_NC_1) */
+        {0, NULL, 25089, 25100},  /* Setpoint command destination addresses (C_SE_NC_1) */
+        {0, NULL, 25601, 25603},  /* Integrated totals (M_IT_NA_1) */
     };
 
     /* Create and execute transmission threads for each IOA range */
@@ -362,7 +362,6 @@ static bool interrogationHandler(void* parameter, IMasterConnection con, CS101_A
         /* Create and manage transmission thread (detached, but joined to ensure serial execution) */
         pthread_create(&threads[i].thread, NULL, syncLockGi, threads[i].task);
         pthread_detach(threads[i].thread);
-        pthread_join(threads[i].thread, NULL);
     }
 
     /* Send interrogation termination to complete the general interrogation sequence */
