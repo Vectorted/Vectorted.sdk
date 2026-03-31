@@ -330,7 +330,7 @@ public class VectortedModule {
      * @throws RuntimeException if server operation fails
      * 
      */
-    public native void syncClientTime(String path);
+    public native void clockLock(String path);
 
     /**
      * Sets boolean data attribute value in IEC 61850 data model.
