@@ -149,7 +149,7 @@ const VALUES = {
         return {
             FLOAT: new Date().getMilliseconds(),
             INT: Math.floor(Math.random() * 3 + 1),
-            BOOLEAN: /*Math.floor(Math.random() * 2) ? true : false*/true
+            BOOLEAN: true
         }
     }
 }
