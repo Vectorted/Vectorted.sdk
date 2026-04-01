@@ -14,6 +14,13 @@ package org.vector.engine;
  */
 public enum Module {
 
+    /**
+     * V8Runtime Vectorted SDK module.
+     * Used for special Vectorted SDK modules (e.g., "vectorted:sdk").
+     * These modules provide proprietary SDK functionality within the Vectorted ecosystem.
+     */
+    NODE_VECTORTED_MODULE,
+
     /** Default module type when no extension or invalid extension found */
     NODE_MODULE,
     
@@ -35,6 +42,9 @@ public enum Module {
      */
     public static Module getModule(String module) {
         int index = module.lastIndexOf('.');
+        if(module.equals("@vectorted")) {
+            return NODE_VECTORTED_MODULE;
+        }
 
         if(index < 0 || index == module.length() - 1) {
             return NODE_MODULE;
