@@ -10,14 +10,17 @@ package org.vector.util;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.FileSystems;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.PathMatcher;
 import java.util.stream.Stream;
 
+import org.vector.Application;
 import org.vector.util.Loggor.Color;
 import org.vector.util.Loggor.Image;
 
@@ -104,6 +107,20 @@ public class Io {
     public static void openInput() {
         System.setOut(print);
         System.setErr(error);
+    }
+
+    /**
+     * Loads a resource file from the classpath as a UTF-8 string.
+     * 
+     * @param file Path to the resource file (relative to classpath)
+     * @return Content of the file as a string, or null if file not found
+     */
+    public static String getResources(String file) {
+        InputStream is = Application.class.getClassLoader().getResourceAsStream(file);
+        try {
+            return new String(is.readAllBytes(), StandardCharsets.UTF_8);
+        } catch (IOException e) {}
+        return null;
     }
     
     /**
