@@ -16,7 +16,7 @@ public enum Module {
 
     /**
      * V8Runtime Vectorted SDK module.
-     * Used for special Vectorted SDK modules (e.g., "vectorted:sdk").
+     * Used for special Vectorted SDK modules (e.g., "@vectorted").
      * These modules provide proprietary SDK functionality within the Vectorted ecosystem.
      */
     NODE_VECTORTED_MODULE,
