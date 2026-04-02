@@ -89,6 +89,12 @@ public final class Vectorted<T> extends VectortedInitialize implements Handler {
     String address;
 
     /**
+     * IEC 61850 model configuration file content in SCL XML format.
+     * Contains ICD/IID/CID configuration data for substation automation.
+     */
+    String icd;
+
+    /**
      * TCP port number on which the MMS server listens for incoming client connections.
      * Retrieved from @Service annotation and used for network binding and logging purposes.
      */
@@ -137,17 +143,7 @@ public final class Vectorted<T> extends VectortedInitialize implements Handler {
      */
     protected Vectorted(Config config, String address, int port) {
         this.client = new VectortedModule();
-        String icd = config.getValue("ICD");
-
-        String path = this.client.bindModel(icd);
-
-        if(path == null) {
-            Loggor.log(Color.RED + "Model generation failed. There may be a syntax error, or the model file " + Color.GREEN + "(" + icd + ")" + Color.RED + " does not exist." + Color.RESET);
-            System.exit(0);
-            return;
-        }
-
-        this.client.pointModel(path);
+        this.icd = config.getValue("ICD");
 
         this.address = address;
         this.port = port;
@@ -208,6 +204,15 @@ public final class Vectorted<T> extends VectortedInitialize implements Handler {
      */
     @Override
     public void initialize() {
+        String path = this.client.bindModel(this.icd);
+        if(path == null) {
+            Loggor.log(Color.RED + "Model generation failed. There may be a syntax error, or the model file " + Color.GREEN + "(" + icd + ")" + Color.RED + " does not exist." + Color.RESET);
+            System.exit(0);
+            return;
+        }
+
+        this.client.pointModel(path);
+
         this.client.bind(address, port);
         this.threadId = this.client.startService(this);
         Loggor.log(Image.CHECK + Color.SPACE + this.processId + ": MMS server has been started " + Image.ARROW + Color.SPACE + Color.BLUE + this.address + ":" + this.port + Color.RESET);
