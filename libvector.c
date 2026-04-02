@@ -178,9 +178,6 @@ bool range(long value, long min, long max) {
  * - 1-4000: Single-point information (M_SP_NA_1)
  * - 4097-4098: Double-point information (M_DP_NA_1)
  * - 16385-22879: Measured values, normalized (M_ME_NA_1)
- * - 24577-24577: Single command destination addresses (C_SC_NA_1)
- * - 24578-24834: Double command destination addresses (C_DC_NA_1)
- * - 25089-25099: Setpoint command destination addresses (C_SE_NC_1)
  * - 25601-25602: Integrated totals (M_IT_NA_1)
  * 
  * @note Remote control and setpoint addresses (24577-25099) are typically
@@ -195,6 +192,7 @@ void* syncLockGi(void* arg) {
     SendTask* task = (SendTask*)arg;
 
     IMasterConnection con = task->con;
+    CS101_ASDU asdu = task->asdu;
     const int start = task->start;
     const int end = task->end;
     const int batchSize = 20;
@@ -205,7 +203,7 @@ void* syncLockGi(void* arg) {
             CS101_ASDU_create(
                 IMasterConnection_getApplicationLayerParameters(con),
                 false,                      /* Not sequence of information objects */
-                CS101_COT_PERIODIC,         /* Periodic transmission */
+                CS101_COT_INTERROGATED_BY_STATION,     /* Periodic transmission */
                 0,                          /* Originator address (0 for not used) */
                 1,                          /* Common address (ASDU address) */
                 false,                      /* No test flag */
@@ -231,21 +229,6 @@ void* syncLockGi(void* arg) {
                 /* Measured value, short format (normalized analog value) */
                 io = (InformationObject)MeasuredValueShort_create(
                     NULL, point, 0.0f, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(point, 24577, 24577)) {
-                /* Single command destination (remote control point) */
-                io = (InformationObject)SingleCommand_create(
-                    NULL, point, 0, false, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(point, 24578, 24834)) {
-                /* Double command destination (dual-state remote control point) */
-                io = (InformationObject)DoubleCommand_create(
-                    NULL, point, 0, false, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(point, 25089, 25099)) {
-                /* Setpoint command destination (normalized analog setpoint) */
-                io = (InformationObject)SetpointCommandNormalized_create(
-                    NULL, point, 0.0f, false, IEC60870_QUALITY_GOOD);
             }
             else if (range(point, 25601, 25602)) {
                 /* Integrated totals (counter/energy totals) */
@@ -322,50 +305,51 @@ static void connectionEventHandler(void* parameter, IMasterConnection con, CS104
  * @return bool Always returns true (command accepted)
  */
 static bool interrogationHandler(void* parameter, IMasterConnection con, CS101_ASDU asdu, uint8_t qoi) {
-    /* Send activation confirmation to master station */
-    IMasterConnection_sendACT_CON(con, asdu, false);
+    if(qoi == 20) {
+        /* Send activation confirmation to master station */
+        IMasterConnection_sendACT_CON(con, asdu, false);
 
-    /* Transmission tasks for all configured IOA ranges */
-    struct {
-        pthread_t thread;
-        SendTask* task;
-        int start;
-        int end;
-    } threads[] = {
-        {0, NULL, 1, 4001},       /* Single-point information (M_SP_NA_1) */
-        {0, NULL, 4097, 4099},    /* Double-point information (M_DP_NA_1) */
-        {0, NULL, 16385, 22880},  /* Measured values, short format (M_ME_NA_1) */
-        {0, NULL, 24577, 24578},  /* Single command destination addresses (C_SC_NA_1) */
-        {0, NULL, 24578, 24835},  /* Double command destination addresses (C_DC_NA_1) */
-        {0, NULL, 25089, 25100},  /* Setpoint command destination addresses (C_SE_NC_1) */
-        {0, NULL, 25601, 25603},  /* Integrated totals (M_IT_NA_1) */
-    };
+        /* Transmission tasks for all configured IOA ranges */
+        struct {
+            pthread_t thread;
+            SendTask* task;
+            int start;
+            int end;
+        } threads[] = {
+            {0, NULL, 1, 4001},       /* Single-point information (M_SP_NA_1) */
+            {0, NULL, 4097, 4099},    /* Double-point information (M_DP_NA_1) */
+            {0, NULL, 16385, 22880},  /* Measured values, short format (M_ME_NA_1) */
+            {0, NULL, 25601, 25603},  /* Integrated totals (M_IT_NA_1) */
+        };
 
-    /* Create and execute transmission threads for each IOA range */
-    for (int i = 0; i < sizeof(threads)/sizeof(threads[0]); i++) {
-        /* Allocate memory for transmission task structure */
-        threads[i].task = (SendTask*)malloc(sizeof(SendTask));
-        if (threads[i].task == NULL) {
-            /* Memory allocation failed - clean up previously allocated tasks */
-            for (int j = 0; j < i; j++) {
-                free(threads[j].task);
+        /* Create and execute transmission threads for each IOA range */
+        for (int i = 0; i < sizeof(threads)/sizeof(threads[0]); i++) {
+            /* Allocate memory for transmission task structure */
+            threads[i].task = (SendTask*)malloc(sizeof(SendTask));
+            if (threads[i].task == NULL) {
+                /* Memory allocation failed - clean up previously allocated tasks */
+                for (int j = 0; j < i; j++) {
+                    free(threads[j].task);
+                }
+                return true;
             }
-            return true;
+            
+            /* Configure task parameters with connection and IOA range */
+            threads[i].task->con = con;
+            threads[i].task->asdu = asdu;
+            threads[i].task->start = threads[i].start;
+            threads[i].task->end = threads[i].end;
+            
+            /* Create and manage transmission thread */
+            pthread_create(&threads[i].thread, NULL, syncLockGi, threads[i].task);
+            pthread_join(threads[i].thread, NULL);
         }
-        
-        /* Configure task parameters with connection and IOA range */
-        threads[i].task->con = con;
-        threads[i].task->asdu = asdu;
-        threads[i].task->start = threads[i].start;
-        threads[i].task->end = threads[i].end;
-        
-        /* Create and manage transmission thread (detached, but joined to ensure serial execution) */
-        pthread_create(&threads[i].thread, NULL, syncLockGi, threads[i].task);
-        pthread_detach(threads[i].thread);
-    }
 
-    /* Send interrogation termination to complete the general interrogation sequence */
-    IMasterConnection_sendACT_TERM(con, asdu);
+        /* Send interrogation termination to complete the general interrogation sequence */
+
+        IMasterConnection_sendACT_TERM(con, asdu);
+    }
+    IMasterConnection_sendACT_CON(con, asdu, true);
     return true;
 }
 
@@ -1241,7 +1225,7 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_bindSlave(JNIEnv* 
         return;
     }
 
-    slave_service = CS104_Slave_create(100, 100);
+    slave_service = CS104_Slave_create(2000, 2000);
 
     CS104_Slave_setLocalAddress(slave_service, address);
     CS104_Slave_setLocalPort(slave_service, port);
@@ -1436,21 +1420,6 @@ JNIEXPORT void JNICALL Java_org_vector_client_VectortedModule_sendSlaveBlock(
                 /* Measured value, short format (normalized analog value) - M_ME_NA_1 */
                 io = (InformationObject)MeasuredValueShort_create(
                     NULL, moduleAddr, value, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(moduleAddr, 24577, 24577)) {
-                /* WARNING: Single command is DOWNLINK type, not typically used for uplink */
-                io = (InformationObject)SingleCommand_create(
-                    NULL, moduleAddr, 0, false, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(moduleAddr, 24578, 24834)) {
-                /* WARNING: Double command is DOWNLINK type, not typically used for uplink */
-                io = (InformationObject)DoubleCommand_create(
-                    NULL, moduleAddr, 0, false, IEC60870_QUALITY_GOOD);
-            }
-            else if (range(moduleAddr, 25089, 25099)) {
-                /* WARNING: Setpoint command is DOWNLINK type, not typically used for uplink */
-                io = (InformationObject)SetpointCommandNormalized_create(
-                    NULL, moduleAddr, value, false, IEC60870_QUALITY_GOOD);
             }
             else if (range(moduleAddr, 25601, 25602)) {
                 /* Integrated totals (counter/energy totals) - M_IT_NA_1 */
