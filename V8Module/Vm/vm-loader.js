@@ -7,6 +7,8 @@
  */
 
 const vm = require('node:vm');
+const Module = require('node:module');
+const fsSync = require('fs');
 const fs = require('node:fs').promises;
 const path = require('node:path');
 
@@ -192,6 +194,32 @@ class ESModule {
 	}
 
 	/**
+	 * Determine whether it is a CJS module based on package.json.
+	 * @param {*} filepath 
+	 * @returns 
+	 * 
+	 */
+	isCjsModule(filepath) {
+		if (filepath.endsWith('.cjs')) return true;
+		if (filepath.endsWith('.mjs')) return false;
+		let dir = path.dirname(filepath);
+		while (dir !== path.dirname(dir)) {
+			const pkgPath = path.join(dir, 'package.json');
+			if (fsSync.existsSync(pkgPath)) {
+				try {
+					const pkg = JSON.parse(fsSync.readFileSync(pkgPath, 'utf8'));
+					if (pkg.type === 'module') return false;
+					return true;
+				} catch (e) {
+					return true;
+				}
+			}
+			dir = path.dirname(dir);
+		}
+		return true;
+	}
+
+	/**
 	 * Cleans the globalThis object by removing certain properties
 	 * This is used to create a clean global scope for the sandbox
 	 * 
@@ -230,14 +258,15 @@ class ESModule {
 	 */
 	wrapCjsModuleAsEsm(modObj) {
 		const keys = Object.keys(modObj);
+		const exportNames = keys.includes('default') ? keys : [...keys, 'default'];
 		return new vm.SyntheticModule(
-			[...keys, 'default'],
+			exportNames,
 			function() {
-				for (const key of keys) this.setExport(key, modObj[key]);
-				this.setExport('default', modObj);
-			}, {
-				//context: this.context
-			}
+				for (const key of keys)
+					this.setExport(key, modObj[key]);
+				if (!keys.includes('default'))
+					this.setExport('default', modObj);
+			}, {}
 		);
 	}
 
@@ -297,8 +326,11 @@ class ESModule {
 	 * @returns {Promise<{module?: vm.Module, filename?: string}>} Resolved module info
 	 */
 	async resolveModuleSpecifier(specifier, referencingModule) {
-		// 1. Node built-in modules / npm packages
-		if (specifier.startsWith('node:') || /^[a-zA-Z0-9_\-@]+/.test(specifier)) {
+		const BUILTIN_MODULES = new Set([
+			...Module.builtinModules,
+			...Module.builtinModules.map(name => 'node:' + name.replace(/^node:/, ''))
+		]);
+		if (BUILTIN_MODULES.has(specifier)) {
 			try {
 				const mod = this.vmRequire(specifier);
 				const m = this.wrapCjsModuleAsEsm(mod);
@@ -307,15 +339,41 @@ class ESModule {
 					module: m
 				};
 			} catch (e) {
-				/* fallback to file path resolution */
+				// fallback
 			}
 		}
-		// 2. File paths (relative/absolute)
-		let base = path.dirname(referencingModule.identifier);
-		let filename = path.resolve(base, specifier);
-		return {
-			filename
-		};
+
+		const base = path.dirname(referencingModule.identifier);
+		let filename;
+		if (
+			/^[\w@][\w\-_/@.]*$/.test(specifier) &&
+			!specifier.startsWith('./') && !specifier.startsWith('../') && !specifier.startsWith('/')
+		) {
+			try {
+				filename = this.vmRequire.resolve(specifier, {
+					paths: [base, process.cwd()]
+				});
+			} catch (e) {
+				throw new Error(`Cannot resolve npm module: ${specifier}\n  from: ${base}\n  search paths: ${[base, process.cwd()]}`);
+			}
+			if (this.isCjsModule(filename)) {
+				const mod = this.vmRequire(filename);
+				const m = this.wrapCjsModuleAsEsm(mod);
+				await m.evaluate();
+				return {
+					module: m
+				};
+			} else {
+				return {
+					filename
+				};
+			}
+		} else {
+			filename = path.resolve(base, specifier);
+			return {
+				filename
+			};
+		}
 	}
 
 	/**
@@ -348,7 +406,6 @@ class ESModule {
 		if (this.moduleCache.has(moduleIdentifier)) return this.moduleCache.get(moduleIdentifier);
 
 		const m = new vm.SourceTextModule(code, {
-			//context: this.context,
 			identifier: moduleIdentifier,
 			importModuleDynamically: this.importModuleDynamically.bind(this),
 			initializeImportMeta: this.createInitializeImportMeta(this.entryIdentifier || moduleIdentifier)
@@ -370,24 +427,81 @@ class ESModule {
 	 * @returns {Promise<vm.Module>} Module with guaranteed default export
 	 */
 	async ensureDefaultExport(m) {
-		await m.link(this.linker.bind(this));
-		await m.evaluate();
+		if (m.status === 'unlinked') {
+			await m.link(this.linker.bind(this));
+		}
+
+		if (m.status === 'linked') {
+			await m.evaluate();
+		}
+
 		const ns = m.namespace;
 		if ('default' in ns) return m;
+
 		const keys = Object.getOwnPropertyNames(ns);
-		const synthetic = new vm.SyntheticModule([...keys, 'default'], function() {
-			for (const k of keys) this.setExport(k, ns[k]);
-			this.setExport('default', ns);
-		}, {
-			//context: this.context
-		});
+		const synthetic = new vm.SyntheticModule(
+			[...keys, 'default'],
+			function() {
+				for (const k of keys) this.setExport(k, ns[k]);
+				this.setExport('default', ns);
+			}, {}
+		);
+
+		await synthetic.link(() => {});
 		await synthetic.evaluate();
+
 		return synthetic;
 	}
 
 	/**
+	 * Loads and caches an ESM module from file or string
+	 * 
+	 * @private
+	 * @async
+	 * @param {string} modulePathOrCode - File path or source code string
+	 * @param {Object} [options={}] - Loading options
+	 * @param {string} [options.filename=null] - Filename for string modules
+	 * @param {boolean} [options.isEntry=false] - Whether this is the entry module
+	 * @param {boolean} [options.isString=false] - Whether modulePathOrCode is source code
+	 * @returns {Promise<vm.Module>} Loaded module instance
+	 */
+	async loadModule(modulePathOrCode, {
+		filename = null,
+		isEntry = false,
+		isString = false
+	} = {}) {
+		let moduleIdentifier, code;
+
+		if (isString) {
+			moduleIdentifier = path.resolve(filename || `memory_${Math.random().toString(36).slice(2)}.mjs`);
+			code = modulePathOrCode;
+		} else {
+			moduleIdentifier = path.resolve(modulePathOrCode);
+			if (this.moduleCache.has(moduleIdentifier)) {
+				const cached = this.moduleCache.get(moduleIdentifier);
+				if (cached.status !== 'evaluated' && cached.status !== 'errored') {
+					this.moduleCache.delete(moduleIdentifier);
+				} else {
+					return cached;
+				}
+			}
+			code = await fs.readFile(moduleIdentifier, 'utf8');
+		}
+
+		const m = new vm.SourceTextModule(code, {
+			identifier: moduleIdentifier,
+			importModuleDynamically: this.importModuleDynamically.bind(this),
+			initializeImportMeta: this.createInitializeImportMeta(this.entryIdentifier || moduleIdentifier)
+		});
+
+		this.moduleCache.set(moduleIdentifier, m);
+
+		if (isEntry) this.entryIdentifier = moduleIdentifier;
+		return m;
+	}
+
+	/**
 	 * Module linker function for resolving dependencies
-	 * Called during module linking phase to resolve import specifiers
 	 * 
 	 * @private
 	 * @async
@@ -397,14 +511,22 @@ class ESModule {
 	 */
 	async linker(specifier, referencingModule) {
 		const resolved = await this.resolveModuleSpecifier(specifier, referencingModule);
-		if (resolved.module) return resolved.module;
+
+		if (resolved.module) {
+			if (resolved.module.status === 'unlinked') {
+				await resolved.module.link(this.linker.bind(this));
+			}
+			if (resolved.module.status === 'linked') {
+				await resolved.module.evaluate();
+			}
+			return resolved.module;
+		}
 		const m = await this.loadModule(resolved.filename);
-		return this.ensureDefaultExport(m);
+		return await this.ensureDefaultExport(m);
 	}
 
 	/**
 	 * Dynamic import handler
-	 * Handles dynamic import() calls from within modules
 	 * 
 	 * @private
 	 * @async
@@ -414,9 +536,19 @@ class ESModule {
 	 */
 	async importModuleDynamically(specifier, referencingModule) {
 		const resolved = await this.resolveModuleSpecifier(specifier, referencingModule);
-		if (resolved.module) return resolved.module;
+
+		if (resolved.module) {
+			if (resolved.module.status === 'unlinked') {
+				await resolved.module.link(this.linker.bind(this));
+			}
+			if (resolved.module.status === 'linked') {
+				await resolved.module.evaluate();
+			}
+			return resolved.module;
+		}
+
 		const m = await this.loadModule(resolved.filename);
-		return this.ensureDefaultExport(m);
+		return await this.ensureDefaultExport(m);
 	}
 
 	/**
